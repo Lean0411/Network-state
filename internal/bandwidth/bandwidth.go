@@ -11,9 +11,19 @@ import (
 func main() {
 	interfaceName := "lo"
 	for {
-		download1, upload1 := getNetworkStats(interfaceName)
+		download1, upload1, err := getNetworkStats(interfaceName)
+		if err != nil {
+			fmt.Printf("Error getting network stats for %s: %s\n", interfaceName, err)
+			os.Exit(1)
+		}
+
 		time.Sleep(5 * time.Second)
-		download2, upload2 := getNetworkStats(interfaceName)
+
+		download2, upload2, err := getNetworkStats(interfaceName)
+		if err != nil {
+			fmt.Printf("Error getting network stats for %s: %s\n", interfaceName, err)
+			os.Exit(1)
+		}
 
 		downloadRate := float64(download2-download1) / 5
 		uploadRate := float64(upload2-upload1) / 5
@@ -24,19 +34,15 @@ func main() {
 	}
 }
 
-func getNetworkStats(interfaceName string) (download, upload uint64) {
+func getNetworkStats(interfaceName string) (download, upload uint64, err error) {
 	data, err := os.ReadFile("/proc/net/dev")
 	if err != nil {
-		panic(err)
+		return 0, 0, fmt.Errorf("failed to read /proc/net/dev: %w", err)
 	}
 
 	lines := strings.Split(string(data), "\n")
 
-	for i, line := range lines {
-		if i < 2 {
-			continue
-		}
-
+	for _, line := range lines {
 		fields := strings.Fields(line)
 		if len(fields) < 10 {
 			continue
@@ -44,11 +50,18 @@ func getNetworkStats(interfaceName string) (download, upload uint64) {
 
 		iface := fields[0]
 		if iface == interfaceName+":" {
-			download, _ = strconv.ParseUint(fields[1], 10, 64)
-			upload, _ = strconv.ParseUint(fields[9], 10, 64)
-			break
+			download, err = strconv.ParseUint(fields[1], 10, 64)
+			if err != nil {
+				return 0, 0, fmt.Errorf("failed to parse download data: %w", err)
+			}
+
+			upload, err = strconv.ParseUint(fields[9], 10, 64)
+			if err != nil {
+				return 0, 0, fmt.Errorf("failed to parse upload data: %w", err)
+			}
+			return download, upload, nil
 		}
 	}
 
-	return
+	return 0, 0, fmt.Errorf("interface %s not found", interfaceName)
 }
