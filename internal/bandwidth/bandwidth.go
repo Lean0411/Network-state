@@ -9,12 +9,12 @@ import (
 )
 
 const (
-	NetworkStatsFilePath = "/proc/net/dev"
-	MeasurementInterval  = 5 * time.Second
+	NetworkStatsFilePath = "/proc/net/dev"  //讀取檔案路徑
+	MeasurementInterval  = 1 * time.Second  //幾秒讀一次
 )
 
 func main() {
-	interfaceName := "lo"
+	interfaceName := "ens4"
 	for {
 		if !measureAndPrintNetworkSpeed(interfaceName) {
 			// 這邊可以根據函數的返回值決定是否重試或退出
@@ -35,7 +35,7 @@ func measureAndPrintNetworkSpeed(interfaceName string) bool {
 	if handleError("subsequent", interfaceName, err) {
 		return false
 	}
-
+	//若後面取出來的值小於前面的值，代表錯誤
 	if download1 > download2 || upload1 > upload2 {
 		fmt.Printf("Error: data for %s seems to have wrapped around or reset\n", interfaceName)
 		return false
@@ -43,14 +43,17 @@ func measureAndPrintNetworkSpeed(interfaceName string) bool {
 
 	downloadRate := float64(download2-download1) / float64(MeasurementInterval.Seconds())
 	uploadRate := float64(upload2-upload1) / float64(MeasurementInterval.Seconds())
+	totalBandwidthRate := downloadRate + uploadRate
 
 	fmt.Printf("Interface: %s\n", interfaceName)
 	fmt.Printf("Download rate: %f MB/s\n", downloadRate/1024.0/1024.0)
 	fmt.Printf("Upload rate: %f MB/s\n", uploadRate/1024.0/1024.0)
+	fmt.Printf("Total Bandwidth: %f MB/s\n", totalBandwidthRate/1024.0/1024.0)
 
 	return true
 }
 
+//讀取網路數據
 func getNetworkStats(interfaceName string) (download, upload uint64, err error) {
 	data, err := os.ReadFile(NetworkStatsFilePath)
 	if err != nil {
@@ -81,6 +84,7 @@ func getNetworkStats(interfaceName string) (download, upload uint64, err error) 
 	return 0, 0, fmt.Errorf("未找到 %s 介面", interfaceName)
 }
 
+//錯誤資訊可以寫在這
 func handleError(stage, interfaceName string, err error) bool {
 	if err != nil {
 		fmt.Printf("在獲取 %s 介面的 %s 網絡統計時出錯: %s\n", interfaceName, stage, err)
