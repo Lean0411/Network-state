@@ -11,22 +11,25 @@ import (
 
 func main() {
 	host := "www.google.com"
+	ticker := time.NewTicker(1 * time.Second)
+	counter := 0
 
-	// 測試網路的 jitter
-	TestJitter(host)
+	for range ticker.C {
+		if counter%5 == 0 { // 每5秒
+			TestJitter(host)
+			TestDelay(host)
+		}
 
-	// 測試網路的延遲
-	TestDelay(host)
-
-	// 測試網路的封包丟失率
-	TestPacketLossRate(host)
+		TestPacketLossRate(host)
+		counter++
+	}
 }
 
 // 測試網路的 jitter
 func TestJitter(host string) {
 	jitter, err := jitter(host)
 	if err != nil {
-		fmt.Println("Jitter 測試失敗:", err)
+		fmt.Println("Jitter test error:", err)
 	} else {
 		fmt.Printf("Jitter: %.2f ms\n", jitter)
 	}
@@ -36,9 +39,9 @@ func TestJitter(host string) {
 func TestDelay(host string) {
 	delay, err := delay(host)
 	if err != nil {
-		fmt.Println("延遲測試失敗:", err)
+		fmt.Println("delay test error:", err)
 	} else {
-		fmt.Printf("延遲: %.2f ms\n", delay)
+		fmt.Printf("delay: %.2f ms\n", delay)
 	}
 }
 
@@ -46,9 +49,9 @@ func TestDelay(host string) {
 func TestPacketLossRate(host string) {
 	packetLossRate, err := packetLossRate(host)
 	if err != nil {
-		fmt.Println("封包丟失率測試失敗:", err)
+		fmt.Println("packet loss test error:", err)
 	} else {
-		fmt.Printf("封包丟失率: %.2f%%\n", packetLossRate)
+		fmt.Printf("Pack loss rate: %.2f%%\n", packetLossRate)
 	}
 }
 
@@ -86,29 +89,30 @@ func delay(host string) (float64, error) {
 	return sum / float64(len(pingResults)), nil
 }
 
-// packetLossRate 函數，測量網路的封包丟失率
+// packetLossRate 函數，測量每秒的網路封包丟失率
 func packetLossRate(host string) (float64, error) {
-	cmd := exec.Command("ping", "-c", "10", host)
-	output, err := cmd.Output()
-	if err != nil {
-		return 0, err
-	}
+	// 在1秒內以200ms的時間間隔發送5個最小封包
+	totalPackets := 5
+	lostPackets := 0
 
-	lines := strings.Split(string(output), "\n")
-	for _, line := range lines {
-		if strings.Contains(line, "packet loss") {
-			splitLine := strings.Split(line, ", ")
-			lossPart := splitLine[2]
-			lossPart = strings.TrimSuffix(lossPart, "% packet loss")
-			lossRate, err := strconv.ParseFloat(lossPart, 64)
-			if err != nil {
-				return 0, err
-			}
-			return lossRate, nil
+	for i := 0; i < totalPackets; i++ {
+		cmd := exec.Command("ping", "-c", "1", "-s", "1", host)
+		err := cmd.Run()
+
+		if err != nil {
+			// 增加丟失的封包數
+			lostPackets++
+		}
+
+		// 如果不是最後一次迴圈，等待200ms再發送下一個封包
+		if i < totalPackets-1 {
+			time.Sleep(200 * time.Millisecond)
 		}
 	}
 
-	return 0, errors.New("找不到封包丟失率")
+	// 計算丟失率：(丟失的封包數/總封包數) * 100
+	lossRate := (float64(lostPackets) / float64(totalPackets)) * 100
+	return lossRate, nil
 }
 
 
