@@ -12,25 +12,28 @@ import (
 
 const (
 	NetworkStatsFilePath = "/proc/net/dev"  //讀取檔案路徑
-	MeasurementInterval  = 1 * time.Second  //幾秒讀一次
-	interfaceName = "ens4"
-	host = "www.google.com"
+	MeasurementInterval  = 1 * time.Second  //幾秒讀一次網路上傳下載
+	interfaceName        = "ens4"
+	host                 = "www.google.com"
+	Period               = int64(1 * time.Second) // 週期性的時間
 )
 
 func main() {
-	ticker := time.NewTicker(1 * time.Second)
+    for {
+        TestJitter(host)
+        TestDelay(host)
+        TestPacketLossRate(host)
 
-	for range ticker.C {
-		//TestJitter(host)
-		//TestDelay(host)
-		/*TestPacketLossRate(host)
-		for {
-			if !measureAndPrintNetworkSpeed(interfaceName) {
-				// 這邊可以根據函數的返回值決定是否重試或退出
-				time.Sleep(1 * time.Second)  // 遇到錯誤，等待1秒，重試
-			}
-		}*/
-	}
+        for {
+            if !measureAndPrintNetworkSpeed(interfaceName) {
+                time.Sleep(time.Duration(Period)) // 使用time.Duration進行轉換
+            } else {
+                break
+            }
+        }
+
+        time.Sleep(time.Duration(Period)) 
+    }
 }
 
 //輸出bandwidth
