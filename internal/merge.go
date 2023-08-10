@@ -11,41 +11,29 @@ import (
 )
 
 const (
-	NetworkStatsFilePath = "/proc/net/dev"
-	MeasurementInterval  = 1 * time.Second
-	interfaceName        = "ens4"
-	host                 = "www.google.com"
+	NetworkStatsFilePath = "/proc/net/dev"  //讀取檔案路徑
+	MeasurementInterval  = 1 * time.Second  //幾秒讀一次
+	interfaceName = "ens4"
+	host = "www.google.com"
 )
 
 func main() {
-	//go networkSpeedMonitor()
-	//go networkQualityMonitor()
-
-	select {} // 無窮迴圈，讓主 goroutine 不停止
-}
-
-func networkSpeedMonitor() {
-	for {
-		if !measureAndPrintNetworkSpeed(interfaceName) {
-			time.Sleep(1 * time.Second) // 遇到錯誤，等待1秒，重試
-		}
-	}
-}
-
-func networkQualityMonitor() {
 	ticker := time.NewTicker(1 * time.Second)
-	counter := 0
 
 	for range ticker.C {
-		if counter%5 == 0 { // 每5秒
-			TestJitter(host)
-			TestDelay(host)
-		}
-		TestPacketLossRate(host)
-		counter++
+		//TestJitter(host)
+		//TestDelay(host)
+		/*TestPacketLossRate(host)
+		for {
+			if !measureAndPrintNetworkSpeed(interfaceName) {
+				// 這邊可以根據函數的返回值決定是否重試或退出
+				time.Sleep(1 * time.Second)  // 遇到錯誤，等待1秒，重試
+			}
+		}*/
 	}
 }
 
+//輸出bandwidth
 func measureAndPrintNetworkSpeed(interfaceName string) bool {
 	download1, upload1, err := getNetworkStats(interfaceName)
 	if handleError("initial", interfaceName, err) {
@@ -58,7 +46,7 @@ func measureAndPrintNetworkSpeed(interfaceName string) bool {
 	if handleError("subsequent", interfaceName, err) {
 		return false
 	}
-
+	//若後面取出來的值小於前面的值，代表錯誤
 	if download1 > download2 || upload1 > upload2 {
 		fmt.Printf("Error: data for %s seems to have wrapped around or reset\n", interfaceName)
 		return false
@@ -76,6 +64,7 @@ func measureAndPrintNetworkSpeed(interfaceName string) bool {
 	return true
 }
 
+//讀取網路數據
 func getNetworkStats(interfaceName string) (download, upload uint64, err error) {
 	data, err := os.ReadFile(NetworkStatsFilePath)
 	if err != nil {
@@ -106,14 +95,7 @@ func getNetworkStats(interfaceName string) (download, upload uint64, err error) 
 	return 0, 0, fmt.Errorf("未找到 %s 介面", interfaceName)
 }
 
-func handleError(stage, interfaceName string, err error) bool {
-	if err != nil {
-		fmt.Printf("在獲取 %s 介面的 %s 網絡統計時出錯: %s\n", interfaceName, stage, err)
-		return true
-	}
-	return false
-}
-
+// 測試網路的 jitter
 func TestJitter(host string) {
 	jitter, err := jitter(host)
 	if err != nil {
@@ -123,6 +105,7 @@ func TestJitter(host string) {
 	}
 }
 
+// 測試網路的延遲
 func TestDelay(host string) {
 	delay, err := delay(host)
 	if err != nil {
@@ -132,6 +115,7 @@ func TestDelay(host string) {
 	}
 }
 
+// 測試網路的封包丟失率
 func TestPacketLossRate(host string) {
 	packetLossRate, err := packetLossRate(host)
 	if err != nil {
@@ -141,6 +125,7 @@ func TestPacketLossRate(host string) {
 	}
 }
 
+// jitter 函數，測量網路的 jitter
 func jitter(host string) (float64, error) {
 	pingResults, err := pingTest(host, 10)
 	if err != nil {
@@ -159,6 +144,7 @@ func jitter(host string) (float64, error) {
 	return sum / float64(len(pingResults)-1), nil
 }
 
+// delay 函數，測量網路的平均延遲
 func delay(host string) (float64, error) {
 	pingResults, err := pingTest(host, 5)
 	if err != nil {
@@ -173,7 +159,9 @@ func delay(host string) (float64, error) {
 	return sum / float64(len(pingResults)), nil
 }
 
+// packetLossRate 函數，測量每秒的網路封包丟失率
 func packetLossRate(host string) (float64, error) {
+	// 在1秒內以200ms的時間間隔發送5個最小封包
 	totalPackets := 5
 	lostPackets := 0
 
@@ -182,45 +170,58 @@ func packetLossRate(host string) (float64, error) {
 		err := cmd.Run()
 
 		if err != nil {
+			// 增加丟失的封包數
 			lostPackets++
 		}
 
+		// 如果不是最後一次迴圈，等待200ms再發送下一個封包
 		if i < totalPackets-1 {
 			time.Sleep(200 * time.Millisecond)
 		}
 	}
 
+	// 計算丟失率：(丟失的封包數/總封包數) * 100
 	lossRate := (float64(lostPackets) / float64(totalPackets)) * 100
 	return lossRate, nil
 }
 
+
+const maxRetries = 3
+// pingTest 函數，執行 ping 測試
 func pingTest(host string, count int) ([]float64, error) {
-	cmd := exec.Command("ping", "-c", strconv.Itoa(count), host)
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, errors.New("ping command failed")
-	}
+	for i := 0; i < maxRetries; i++ {
+		cmd := exec.Command("ping", "-c", strconv.Itoa(count), host)
+		output, err := cmd.CombinedOutput() // 獲取 STDOUT 和 STDERR
 
-	return parsePingOutput(string(output)), nil
-}
-
-func parsePingOutput(output string) []float64 {
-	lines := strings.Split(output, "\n")
-	var results []float64
-	for _, line := range lines {
-		if strings.Contains(line, "time=") {
-			parts := strings.Split(line, "time=")
-			if len(parts) > 1 {
-				timePart := parts[1]
-				timeValue := strings.Split(timePart, " ")[0]
-				timeFloat, err := strconv.ParseFloat(timeValue, 64)
-				if err == nil {
-					results = append(results, timeFloat)
+		if err == nil {
+			lines := strings.Split(string(output), "\n")
+			var pingResults []float64
+			for _, line := range lines {
+				if strings.Contains(line, "time=") {
+					timePart := strings.Split(line, "time=")[1]
+					timePart = strings.Split(timePart, " ")[0]
+					timeVal, err := strconv.ParseFloat(timePart, 64)
+					if err != nil {
+						return nil, fmt.Errorf("ping 輸出時發生錯誤: %v", err)
+					}
+					pingResults = append(pingResults, timeVal)
 				}
+			}
+			if len(pingResults) == 0 {
+				return nil, errors.New("找不到 ping 結果")
+			}
+			return pingResults, nil
+		} else {
+			fmt.Printf("Ping 測試失敗: %v\n", err) // 輸出錯誤訊息
+			if i < maxRetries-1 {
+				fmt.Println("重新ping", host, "中") 
+				// 等一秒後再重試
+				time.Sleep(1 * time.Second)
 			}
 		}
 	}
-	return results
+
+	return nil, fmt.Errorf("ping 命令失敗達到上限")
 }
 
 func abs(x float64) float64 {
@@ -228,4 +229,13 @@ func abs(x float64) float64 {
 		return -x
 	}
 	return x
+}
+
+//錯誤資訊可以寫在這
+func handleError(stage, interfaceName string, err error) bool {
+	if err != nil {
+		fmt.Printf("在獲取 %s 介面的 %s 網絡統計時出錯: %s\n", interfaceName, stage, err)
+		return true
+	}
+	return false
 }
