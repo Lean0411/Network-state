@@ -130,7 +130,7 @@ func TestPacketLossRate(host string) {
 
 // jitter 函數，測量網路的 jitter
 func jitter(host string) (float64, error) {
-	pingResults, err := pingTest(host, 10)
+	pingResults, err := pingTest(host, 3)
 	if err != nil {
 		return 0, err
 	}
@@ -149,7 +149,7 @@ func jitter(host string) (float64, error) {
 
 // delay 函數，測量網路的平均延遲
 func delay(host string) (float64, error) {
-	pingResults, err := pingTest(host, 5)
+	pingResults, err := pingTest(host, 3)
 	if err != nil {
 		return 0, err
 	}
