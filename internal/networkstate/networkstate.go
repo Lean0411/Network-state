@@ -1,4 +1,4 @@
-package main
+package networkstate
 
 import (
 	"errors"
@@ -13,31 +13,11 @@ import (
 const (
 	NetworkStatsFilePath = "/proc/net/dev"  //讀取檔案路徑
 	MeasurementInterval  = 1 * time.Second  //幾秒讀一次網路上傳下載
-	interfaceName        = "ens4"
-	host                 = "www.google.com"
-	Period               = int64(1 * time.Second) // 週期性的時間
 )
 
-func main() {
-    for {
-        TestJitter(host)
-        TestDelay(host)
-        TestPacketLossRate(host)
-
-        for {
-            if !measureAndPrintNetworkSpeed(interfaceName) {
-                time.Sleep(time.Duration(Period)) // 使用time.Duration進行轉換
-            } else {
-                break
-            }
-        }
-
-        time.Sleep(time.Duration(Period)) 
-    }
-}
 
 //輸出bandwidth
-func measureAndPrintNetworkSpeed(interfaceName string) bool {
+func MeasureAndPrintNetworkSpeed(interfaceName string) bool {
 	download1, upload1, err := getNetworkStats(interfaceName)
 	if handleError("initial", interfaceName, err) {
 		return false
