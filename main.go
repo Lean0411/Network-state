@@ -7,7 +7,7 @@ import (
 
 const(
 	interfaceName        = "ens4"
-	host                 = "www.google.com"
+	host                 = "10.0.0.0"
 	Period               = int64(1 * time.Second) // 週期性的時間
 )
 
