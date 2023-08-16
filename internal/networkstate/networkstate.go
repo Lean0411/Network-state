@@ -170,54 +170,44 @@ func packetLossRate(host string) (float64, error) {
 }
 
 
-const (
-	maxRetries  = 3         // 定義重試次數的常數
-	timeoutSecs = 5         // 定義超時秒數的常數
-)
+const timeoutSecs = 5         // 定義超時秒數的常數
+
 // pingTest 函數，執行 ping 測試
 func pingTest(host string, count int) ([]float64, error) {
-	for i := 0; i < maxRetries; i++ {
-		// 創建一個帶有超時時間的 context
-		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutSecs)*time.Second)
-		defer cancel()
+	// 創建一個帶有超時時間的 context
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutSecs)*time.Second)
+	defer cancel()
 
-		cmd := exec.CommandContext(ctx, "ping", "-c", strconv.Itoa(count), host)
-		output, err := cmd.CombinedOutput() // 獲取 STDOUT 和 STDERR
+	cmd := exec.CommandContext(ctx, "ping", "-c", strconv.Itoa(count), host)
+	output, err := cmd.CombinedOutput() // 獲取 STDOUT 和 STDERR
 
-		if err == nil {
-			lines := strings.Split(string(output), "\n")
-			var pingResults []float64
-			for _, line := range lines {
-				if strings.Contains(line, "time=") {
-					timePart := strings.Split(line, "time=")[1]
-					timePart = strings.Split(timePart, " ")[0]
-					timeVal, err := strconv.ParseFloat(timePart, 64)
-					if err != nil {
-						return nil, fmt.Errorf("ping 輸出時發生錯誤: %v", err)
-					}
-					pingResults = append(pingResults, timeVal)
+	if err == nil {
+		lines := strings.Split(string(output), "\n")
+		var pingResults []float64
+		for _, line := range lines {
+			if strings.Contains(line, "time=") {
+				timePart := strings.Split(line, "time=")[1]
+				timePart = strings.Split(timePart, " ")[0]
+				timeVal, err := strconv.ParseFloat(timePart, 64)
+				if err != nil {
+					return nil, fmt.Errorf("ping 輸出時發生錯誤: %v", err)
 				}
-			}
-			if len(pingResults) == 0 {
-				return nil, errors.New("找不到 ping 結果")
-			}
-			return pingResults, nil
-		} else {
-			if ctx.Err() == context.DeadlineExceeded {
-				fmt.Println("網路回應超時")
-				return nil, ctx.Err()
-			} else {
-				fmt.Printf("Ping 測試失敗: %v\n", err)
+				pingResults = append(pingResults, timeVal)
 			}
 		}
-
-		if i < maxRetries-1 {
-			fmt.Println("重新ping", host, "中")
-			time.Sleep(1 * time.Second)
+		if len(pingResults) == 0 {
+			return nil, errors.New("找不到 ping 結果")
+		}
+		return pingResults, nil
+	} else {
+		if ctx.Err() == context.DeadlineExceeded {
+			fmt.Println("網路回應超時")
+			return nil, ctx.Err()
+		} else {
+			fmt.Printf("Ping 測試失敗: %v\n", err)
+			return nil, err
 		}
 	}
-
-	return nil, fmt.Errorf("ping 命令失敗達到上限")
 }
 
 func abs(x float64) float64 {
