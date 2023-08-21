@@ -12,10 +12,9 @@ import (
 )
 
 const (
-	NetworkStatsFilePath = "/proc/net/dev"  //讀取檔案路徑
-	MeasurementInterval  = 1 * time.Second  //幾秒讀一次網路上傳下載
+	NetworkStatsFilePath = "/proc/net/dev" //讀取檔案路徑
+	MeasurementInterval  = 1 * time.Second //幾秒讀一次網路上傳下載
 )
-
 
 //輸出bandwidth
 func MeasureAndPrintNetworkSpeed(interfaceName string) bool {
@@ -36,14 +35,15 @@ func MeasureAndPrintNetworkSpeed(interfaceName string) bool {
 		return false
 	}
 
-	downloadRate := float64(download2-download1) / float64(MeasurementInterval.Seconds())
-	uploadRate := float64(upload2-upload1) / float64(MeasurementInterval.Seconds())
+	// 由於1 byte = 8 bits，所以我們在這裡乘以8來得到 Mbps 值
+	downloadRate := (float64(download2-download1) * 8) / float64(MeasurementInterval.Seconds()) / 1024.0 / 1024.0
+	uploadRate := (float64(upload2-upload1) * 8) / float64(MeasurementInterval.Seconds()) / 1024.0 / 1024.0
 	totalBandwidthRate := downloadRate + uploadRate
 
 	fmt.Printf("Interface: %s\n", interfaceName)
-	fmt.Printf("Download rate: %f MB/s\n", downloadRate/1024.0/1024.0)
-	fmt.Printf("Upload rate: %f MB/s\n", uploadRate/1024.0/1024.0)
-	fmt.Printf("Total Bandwidth: %f MB/s\n", totalBandwidthRate/1024.0/1024.0)
+	fmt.Printf("Download rate: %f Mbps\n", downloadRate)
+	fmt.Printf("Upload rate: %f Mbps\n", uploadRate)
+	fmt.Printf("Total Bandwidth: %f Mbps\n", totalBandwidthRate)
 
 	return true
 }
@@ -169,8 +169,7 @@ func packetLossRate(host string) (float64, error) {
 	return lossRate, nil
 }
 
-
-const timeoutSecs = 5         // 定義超時秒數的常數
+const timeoutSecs = 5 // 定義超時秒數的常數
 
 // pingTest 函數，執行 ping 測試
 func pingTest(host string, count int) ([]float64, error) {
