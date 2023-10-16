@@ -59,6 +59,15 @@ type ProfileListItem struct {
 }
 
 // 從請求中解析配置資料，然後在profileStore中新增配置。
+// @Summary Add new profile
+// @Description Add a new SLA profile to the store
+// @Tags SLAProfile
+// @Accept json
+// @Produce json
+// @Param profile body Profile true "Profile to add"
+// @Success 200 {object} map[string]bool "status: true"
+// @Failure 400 {object} map[string]string "status: false, err_message: error details"
+// @Router /api/v1/wanBinding/slaprofile/add [post]
 func addProfile(c *gin.Context) {
 	var profile struct {
 		Name         string         `json:"name"`
@@ -132,6 +141,16 @@ func addProfile(c *gin.Context) {
 
 
 // 解析 profile_id，然後在profileStore 中找到並回傳該配置。
+// @Summary Get profile by ID
+// @Description Get a specific SLA profile by its ID
+// @Tags SLAProfile
+// @Accept json
+// @Produce json
+// @Param profile_id body string true "Profile ID"
+// @Success 200 {object} Profile
+// @Failure 400 {object} map[string]string "status: false, err_message: error details"
+// @Failure 404 {object} map[string]string "status: false, err_message: Profile not found"
+// @Router /api/v1/wanBinding/slaprofile/content [post]
 func getProfile(c *gin.Context) {
 	var request struct {
 		ProfileID string `json:"profile_id"`
@@ -154,6 +173,16 @@ func getProfile(c *gin.Context) {
 }
 
 //解析 profile_id和其他編輯資料，然後在profileStore中更新配置。
+// @Summary Edit profile by ID
+// @Description Edit a specific SLA profile by its ID
+// @Tags SLAProfile
+// @Accept json
+// @Produce json
+// @Param profile_id body string true "Profile ID"
+// @Success 200 {object} map[string]bool "status: true"
+// @Failure 400 {object} map[string]string "status: false, err_message: error details"
+// @Failure 404 {object} map[string]string "status: false, err_message: Profile not found"
+// @Router /api/v1/wanBinding/slaprofile/edit [post]
 func editProfile(c *gin.Context) {
     var request struct {
         ProfileID    string         `json:"profileId"`
@@ -233,6 +262,16 @@ func editProfile(c *gin.Context) {
 
 
 //刪除
+// @Summary Delete profile by ID
+// @Description Delete a specific SLA profile by its ID
+// @Tags SLAProfile
+// @Accept json
+// @Produce json
+// @Param profile_id body string true "Profile ID"
+// @Success 200 {object} map[string]bool "status: true"
+// @Failure 400 {object} map[string]string "status: false, err_message: error details"
+// @Failure 404 {object} map[string]string "status: false, err_message: Profile not found"
+// @Router /api/v1/wanBinding/slaprofile/delete [post]
 func deleteProfile(c *gin.Context) {
     var request struct {
         ProfileID string `json:"profile_id"`
@@ -256,6 +295,13 @@ func deleteProfile(c *gin.Context) {
 }
 
 //列出ProfileListItem結構
+// @Summary List all profiles
+// @Description List all available SLA profiles
+// @Tags SLAProfile
+// @Accept json
+// @Produce json
+// @Success 200 {object} []ProfileListItem
+// @Router /api/v1/wanBinding/slaprofile/list [get]
 func listProfiles(c *gin.Context) {
     profileMutex.Lock()
     defer profileMutex.Unlock()
